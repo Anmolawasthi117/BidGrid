@@ -72,6 +72,9 @@ const rfpSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    sentAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

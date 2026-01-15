@@ -17,9 +17,10 @@ Your job is to help users create complete, detailed RFPs through natural convers
 - Be conversational, friendly, and professional
 - Ask ONE set of questions at a time (2-4 questions max)
 - Remember context from previous messages
-- When you have ALL required information, respond with:
-  "I have all the details needed to create your RFP!"
-  Then provide the RFP as a JSON block in this exact format:
+- When you have ALL required information, respond with a friendly confirmation like:
+  "Perfect! I have all the details needed to create your RFP. Your RFP for [brief description] is ready! You can now review it in the preview panel and select vendors to send it to."
+  
+  Then provide the RFP data as a JSON block (this will be parsed by the system, not shown to users):
 
 \`\`\`json
 {
@@ -37,6 +38,7 @@ Your job is to help users create complete, detailed RFPs through natural convers
 ## IMPORTANT:
 - Do NOT generate the JSON until you have all required information
 - If user provides everything in one message, you can generate immediately
+- The JSON block is for system parsing only - focus on the friendly message above it
 - Always be helpful and guide the user through the process`;
 
 class AIService {

@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion } from "framer-motion";
-import { Send, Sparkles, ArrowLeft, Save, Users } from "lucide-react";
+import { Send, Sparkles, ArrowLeft, Mail, Users, CheckCircle2, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import RFPPreview from "@/components/RFPPreview";
-import { sendMessage, addUserMessage, clearChat, updateRFP } from "@/store/slices/rfpSlice";
+import { sendMessage, addUserMessage, clearChat, sendRFPToVendors } from "@/store/slices/rfpSlice";
+import { fetchVendors } from "@/store/slices/vendorSlice";
 
 function CreateRFPPage() {
   const dispatch = useDispatch();
@@ -19,9 +20,15 @@ function CreateRFPPage() {
 
   const [inputValue, setInputValue] = useState("");
   const [selectedVendors, setSelectedVendors] = useState([]);
-  const [showVendorSelect, setShowVendorSelect] = useState(false);
+  const [sendStatus, setSendStatus] = useState(null); // 'sending' | 'success' | 'error' | null
+  const [sendResult, setSendResult] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Fetch vendors on mount
+  useEffect(() => {
+    dispatch(fetchVendors());
+  }, [dispatch]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -39,10 +46,7 @@ function CreateRFPPage() {
     const message = inputValue.trim();
     setInputValue("");
     
-    // Add user message immediately for UI feedback
     dispatch(addUserMessage(message));
-    
-    // Send to API
     dispatch(sendMessage({ message, rfpId: currentRfpId }));
   };
 
@@ -56,21 +60,30 @@ function CreateRFPPage() {
   const handleNewChat = () => {
     dispatch(clearChat());
     setSelectedVendors([]);
-    setShowVendorSelect(false);
+    setSendStatus(null);
+    setSendResult(null);
   };
 
-  const handleSaveWithVendors = async () => {
+  const handleSendToVendors = async () => {
     if (selectedVendors.length === 0) {
-      setShowVendorSelect(true);
+      alert("Please select at least one vendor");
       return;
     }
 
-    await dispatch(updateRFP({ 
-      id: currentRfpId, 
-      data: { vendors: selectedVendors } 
-    }));
+    setSendStatus("sending");
     
-    navigate("/rfps");
+    try {
+      const result = await dispatch(sendRFPToVendors({ 
+        rfpId: currentRfpId, 
+        vendorIds: selectedVendors 
+      })).unwrap();
+      
+      setSendStatus("success");
+      setSendResult(result);
+    } catch (err) {
+      setSendStatus("error");
+      setSendResult({ error: err });
+    }
   };
 
   return (
@@ -100,12 +113,6 @@ function CreateRFPPage() {
               {chatMessages.length > 0 && (
                 <Button variant="outline" size="sm" onClick={handleNewChat}>
                   New Chat
-                </Button>
-              )}
-              {isComplete && (
-                <Button size="sm" onClick={handleSaveWithVendors}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save RFP
                 </Button>
               )}
             </div>
@@ -193,8 +200,8 @@ function CreateRFPPage() {
           <div className="h-full overflow-y-auto">
             <RFPPreview rfp={currentRfp} isComplete={isComplete} />
 
-            {/* Vendor Selection - Show when RFP is complete */}
-            {isComplete && (
+            {/* Vendor Selection & Send - Show when RFP is complete */}
+            {isComplete && sendStatus !== "success" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -204,7 +211,7 @@ function CreateRFPPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Users className="w-5 h-5 text-emerald-500" />
-                      <h4 className="font-semibold text-slate-800">Select Vendors</h4>
+                      <h4 className="font-semibold text-slate-800">Select Vendors & Send</h4>
                     </div>
                     {vendors.length === 0 ? (
                       <p className="text-sm text-slate-500">
@@ -215,36 +222,86 @@ function CreateRFPPage() {
                         to send this RFP.
                       </p>
                     ) : (
-                      <div className="space-y-2">
-                        {vendors.map((vendor) => (
-                          <label
-                            key={vendor._id}
-                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedVendors.includes(vendor._id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedVendors([...selectedVendors, vendor._id]);
-                                } else {
-                                  setSelectedVendors(
-                                    selectedVendors.filter((id) => id !== vendor._id)
-                                  );
-                                }
-                              }}
-                              className="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-500"
-                            />
-                            <div>
-                              <p className="text-sm font-medium text-slate-800">
-                                {vendor.name}
-                              </p>
-                              <p className="text-xs text-slate-500">{vendor.email}</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
+                      <>
+                        <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+                          {vendors.map((vendor) => (
+                            <label
+                              key={vendor._id}
+                              className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedVendors.includes(vendor._id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedVendors([...selectedVendors, vendor._id]);
+                                  } else {
+                                    setSelectedVendors(
+                                      selectedVendors.filter((id) => id !== vendor._id)
+                                    );
+                                  }
+                                }}
+                                className="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-500"
+                              />
+                              <div>
+                                <p className="text-sm font-medium text-slate-800">
+                                  {vendor.name}
+                                </p>
+                                <p className="text-xs text-slate-500">{vendor.email}</p>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          onClick={handleSendToVendors}
+                          disabled={selectedVendors.length === 0 || sendStatus === "sending"}
+                        >
+                          {sendStatus === "sending" ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Send RFP to {selectedVendors.length} Vendor{selectedVendors.length !== 1 ? "s" : ""}
+                            </>
+                          )}
+                        </Button>
+                      </>
                     )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Success message */}
+            {sendStatus === "success" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-4"
+              >
+                <Card className="border-emerald-200 bg-emerald-50">
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle2 className="w-6 h-6 text-white" />
+                    </div>
+                    <h4 className="font-semibold text-emerald-800 mb-1">RFP Sent Successfully!</h4>
+                    <p className="text-sm text-emerald-600 mb-4">
+                      Your RFP has been sent to {sendResult?.data?.emailResults?.totalSent || selectedVendors.length} vendor(s).
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <Button variant="outline" size="sm" onClick={handleNewChat}>
+                        Create Another RFP
+                      </Button>
+                      <Link to="/dashboard">
+                        <Button size="sm">
+                          Go to Dashboard
+                        </Button>
+                      </Link>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -257,3 +314,4 @@ function CreateRFPPage() {
 }
 
 export default CreateRFPPage;
+

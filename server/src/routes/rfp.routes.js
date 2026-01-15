@@ -7,6 +7,7 @@ import {
   updateRFP,
   deleteRFP,
   finalizeRFP,
+  sendRFP,
 } from "../controllers/rfp.controller.js";
 
 const router = Router();
@@ -28,5 +29,8 @@ router.route("/:id")
 
 // Finalize RFP (mark as sent)
 router.route("/:id/finalize").post(finalizeRFP);
+
+// Send RFP to vendors via email
+router.route("/:id/send").post(sendRFP);
 
 export default router;

@@ -94,6 +94,21 @@ export const finalizeRFP = createAsyncThunk(
   }
 );
 
+// Send RFP to vendors via email
+export const sendRFPToVendors = createAsyncThunk(
+  "rfp/sendRFPToVendors",
+  async ({ rfpId, vendorIds }, thunkAPI) => {
+    try {
+      const res = await axios.post(`/rfps/${rfpId}/send`, { vendorIds });
+      return res.data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to send RFP"
+      );
+    }
+  }
+);
+
 // ==================== SLICE ====================
 
 const initialState = {
@@ -215,6 +230,26 @@ const rfpSlice = createSlice({
         if (index !== -1) {
           state.rfps[index] = action.payload;
         }
+      })
+
+      // Send RFP to vendors
+      .addCase(sendRFPToVendors.pending, (state) => {
+        state.sending = true;
+        state.error = null;
+      })
+      .addCase(sendRFPToVendors.fulfilled, (state, action) => {
+        state.sending = false;
+        if (action.payload.data?.rfp) {
+          state.currentRfp = action.payload.data.rfp;
+          const index = state.rfps.findIndex((r) => r._id === action.payload.data.rfp._id);
+          if (index !== -1) {
+            state.rfps[index] = action.payload.data.rfp;
+          }
+        }
+      })
+      .addCase(sendRFPToVendors.rejected, (state, action) => {
+        state.sending = false;
+        state.error = action.payload;
       });
   },
 });

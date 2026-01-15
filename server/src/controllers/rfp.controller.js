@@ -2,7 +2,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { RFP } from "../models/rfp.model.js";
+import { Vendor } from "../models/vendor.model.js";
 import { aiService } from "../services/ai.service.js";
+import { emailService } from "../services/email.service.js";
 import {
   sendMessageSchema,
   updateRFPSchema,
@@ -216,4 +218,58 @@ const finalizeRFP = asyncHandler(async (req, res) => {
   );
 });
 
-export { chat, getRFPs, getRFPById, updateRFP, deleteRFP, finalizeRFP };
+// Send RFP to vendors via email
+const sendRFP = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { vendorIds } = req.body;
+
+  const validation = rfpIdSchema.safeParse({ id });
+  if (!validation.success) {
+    throw new ApiError(400, "Invalid RFP ID");
+  }
+
+  if (!vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
+    throw new ApiError(400, "Please select at least one vendor");
+  }
+
+  // Get RFP with user info
+  const rfp = await RFP.findOne({ _id: id, createdBy: req.user._id })
+    .populate("createdBy", "username email");
+
+  if (!rfp) {
+    throw new ApiError(404, "RFP not found");
+  }
+
+  if (!rfp.isComplete) {
+    throw new ApiError(400, "RFP is not complete. Continue chatting to gather all required information.");
+  }
+
+  // Get vendors
+  const vendors = await Vendor.find({
+    _id: { $in: vendorIds },
+    createdBy: req.user._id
+  });
+
+  if (vendors.length === 0) {
+    throw new ApiError(404, "No valid vendors found");
+  }
+
+  // Send emails
+  console.log(`Sending RFP "${rfp.title}" to ${vendors.length} vendors...`);
+  const emailResults = await emailService.sendRFPToVendors(vendors, rfp);
+
+  // Update RFP with sent vendors
+  rfp.vendors = vendorIds;
+  rfp.status = "sent";
+  rfp.sentAt = new Date();
+  await rfp.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      rfp,
+      emailResults,
+    }, `RFP sent to ${emailResults.totalSent} vendor(s)`)
+  );
+});
+
+export { chat, getRFPs, getRFPById, updateRFP, deleteRFP, finalizeRFP, sendRFP };
