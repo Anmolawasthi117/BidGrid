@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 function RFPPreview({ rfp, onEdit, isComplete }) {
-  if (!rfp && !isComplete) {
+  // Show empty state if no RFP data yet
+  if (!rfp) {
     return (
       <Card className="h-full flex items-center justify-center">
         <CardContent className="text-center py-12">
@@ -21,14 +22,14 @@ function RFPPreview({ rfp, onEdit, isComplete }) {
             RFP Preview
           </h3>
           <p className="text-slate-400 text-sm max-w-xs">
-            Chat with the AI to generate your RFP. The preview will appear here once complete.
+            {isComplete 
+              ? "Loading RFP details..." 
+              : "Chat with the AI to generate your RFP. The preview will appear here once complete."}
           </p>
         </CardContent>
       </Card>
     );
   }
-
-  if (!rfp) return null;
 
   const formatDate = (date) => {
     if (!date) return "Not specified";

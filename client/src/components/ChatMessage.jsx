@@ -2,7 +2,29 @@ import { motion } from "framer-motion";
 import { User, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Function to strip JSON code blocks from AI responses
+function stripJsonFromMessage(content) {
+  if (!content) return "";
+  
+  // Remove ```json ... ``` blocks (with various whitespace)
+  let cleaned = content.replace(/```json[\s\S]*?```/gi, "");
+  
+  // Also remove ``` ... ``` blocks that contain JSON-like content
+  cleaned = cleaned.replace(/```[\s\S]*?```/gi, "");
+  
+  // Remove standalone JSON objects at the end of the message
+  // This catches raw JSON that isn't wrapped in code blocks
+  cleaned = cleaned.replace(/\s*\{[\s\S]*"isComplete"[\s\S]*\}\s*$/gi, "");
+  
+  return cleaned.trim();
+}
+
 function ChatMessage({ message, isUser }) {
+  // For AI messages, strip out the JSON blocks
+  const displayContent = isUser 
+    ? message.content 
+    : stripJsonFromMessage(message.content);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -36,7 +58,7 @@ function ChatMessage({ message, isUser }) {
             : "bg-slate-100 text-slate-800 rounded-bl-md"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
       </div>
     </motion.div>
   );
@@ -64,3 +86,4 @@ function TypingIndicator() {
 }
 
 export { ChatMessage, TypingIndicator };
+
