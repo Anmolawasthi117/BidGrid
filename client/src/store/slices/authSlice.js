@@ -101,7 +101,8 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
+        // API returns { data: user } structure
+        state.user = action.payload.data;
         state.message = "Registration successful";
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -116,7 +117,8 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
+        // API returns { data: { user, accessToken, refreshToken } }
+        state.user = action.payload.data?.user || action.payload.data;
         state.message = "Login successful";
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -126,7 +128,7 @@ const authSlice = createSlice({
 
       // Get current user
       .addCase(getCurrentUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
+        state.user = action.payload.data;
       })
 
       // Logout

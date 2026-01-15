@@ -1,9 +1,9 @@
-import { app } from "./app.js";
 import dotenv from "dotenv";
+dotenv.config({ path: "./src/.env" });
+
+import { app } from "./app.js";
 import connectDB from "./db/index.js";
 import logger from "./utils/logger.js"; // Ensure logger is imported
-
-dotenv.config({ path: "./src/.env" });
 
 const PORT = process.env.PORT || 3000;
 
