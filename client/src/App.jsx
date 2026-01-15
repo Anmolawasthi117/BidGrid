@@ -9,6 +9,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import VendorsPage from "./pages/VendorsPage";
 import CreateRFPPage from "./pages/CreateRFPPage";
+import RFPDetailPage from "./pages/RFPDetailPage";
+import SubmitProposalPage from "./pages/SubmitProposalPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { checkAuth } from "./store/slices/authSlice";
 
@@ -42,6 +44,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />
+        <Route path="/proposals/submit/:rfpId" element={<SubmitProposalPage />} />
         
         {/* Protected Routes */}
         <Route
@@ -68,11 +71,20 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/rfps/:id"
+          element={
+            <ProtectedRoute>
+              <RFPDetailPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </div>
   );
 }
 
 export default App;
+
 
 

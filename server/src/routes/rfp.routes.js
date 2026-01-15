@@ -9,6 +9,7 @@ import {
   finalizeRFP,
   sendRFP,
 } from "../controllers/rfp.controller.js";
+import { getProposalsForRFP } from "../controllers/proposal.controller.js";
 
 const router = Router();
 
@@ -27,6 +28,9 @@ router.route("/:id")
   .patch(updateRFP)
   .delete(deleteRFP);
 
+// Get proposals for an RFP
+router.route("/:rfpId/proposals").get(getProposalsForRFP);
+
 // Finalize RFP (mark as sent)
 router.route("/:id/finalize").post(finalizeRFP);
 
@@ -34,3 +38,4 @@ router.route("/:id/finalize").post(finalizeRFP);
 router.route("/:id/send").post(sendRFP);
 
 export default router;
+

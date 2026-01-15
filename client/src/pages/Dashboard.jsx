@@ -1,4 +1,5 @@
-import { useSelector } from "react-redux";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -9,33 +10,54 @@ import {
   Plus,
   TrendingUp,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Eye,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4 }
-};
+import { Badge } from "@/components/ui/badge";
+import { fetchRFPs } from "@/store/slices/rfpSlice";
 
 function Dashboard() {
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { rfps, loading } = useSelector((state) => state.rfp);
+  const { vendors } = useSelector((state) => state.vendors);
 
-  // Placeholder stats - will be dynamic in later phases
+  // Fetch RFPs on mount
+  useEffect(() => {
+    dispatch(fetchRFPs());
+  }, [dispatch]);
+
+  // Calculate stats
+  const activeRFPs = rfps.filter(r => r.status === "sent").length;
+  const draftRFPs = rfps.filter(r => r.status === "drafting" || r.status === "draft").length;
+  const closedRFPs = rfps.filter(r => r.status === "closed").length;
+
   const stats = [
-    { label: "Active RFPs", value: "0", icon: FileText, color: "emerald", change: null },
-    { label: "Total Vendors", value: "0", icon: Users, color: "blue", change: null },
-    { label: "Pending Proposals", value: "0", icon: Clock, color: "amber", change: null },
-    { label: "Completed", value: "0", icon: CheckCircle2, color: "purple", change: null },
+    { label: "Active RFPs", value: activeRFPs.toString(), icon: FileText, color: "emerald" },
+    { label: "Total Vendors", value: vendors?.length?.toString() || "0", icon: Users, color: "blue" },
+    { label: "In Progress", value: draftRFPs.toString(), icon: Clock, color: "amber" },
+    { label: "Completed", value: closedRFPs.toString(), icon: CheckCircle2, color: "purple" },
   ];
 
   const quickActions = [
     { label: "Add Vendor", icon: Plus, href: "/vendors", color: "emerald" },
     { label: "Create RFP", icon: FileText, href: "/rfps/create", color: "blue" },
-    { label: "View Comparisons", icon: BarChart3, href: "#", color: "purple", disabled: true },
+    { label: "View All RFPs", icon: BarChart3, href: "#rfps", color: "purple" },
   ];
+
+  const getStatusBadge = (status) => {
+    const variants = {
+      drafting: { variant: "secondary", label: "Drafting" },
+      draft: { variant: "secondary", label: "Draft" },
+      sent: { variant: "default", label: "Sent" },
+      closed: { variant: "success", label: "Closed" },
+    };
+    const config = variants[status] || { variant: "secondary", label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -70,15 +92,9 @@ function Dashboard() {
                     <div>
                       <p className="text-sm font-medium text-slate-500">{stat.label}</p>
                       <p className="text-3xl font-bold text-slate-900 mt-1">{stat.value}</p>
-                      {stat.change && (
-                        <div className="flex items-center gap-1 mt-2 text-sm text-emerald-600">
-                          <TrendingUp className="w-4 h-4" />
-                          {stat.change}
-                        </div>
-                      )}
                     </div>
-                    <div className={`p-3 rounded-xl bg-${stat.color}-100`} style={{ backgroundColor: stat.color === "emerald" ? "#d1fae5" : stat.color === "blue" ? "#dbeafe" : stat.color === "amber" ? "#fef3c7" : "#f3e8ff" }}>
-                      <stat.icon className={`w-6 h-6 text-${stat.color}-600`} style={{ color: stat.color === "emerald" ? "#059669" : stat.color === "blue" ? "#2563eb" : stat.color === "amber" ? "#d97706" : "#9333ea" }} />
+                    <div className={`p-3 rounded-xl`} style={{ backgroundColor: stat.color === "emerald" ? "#d1fae5" : stat.color === "blue" ? "#dbeafe" : stat.color === "amber" ? "#fef3c7" : "#f3e8ff" }}>
+                      <stat.icon className="w-6 h-6" style={{ color: stat.color === "emerald" ? "#059669" : stat.color === "blue" ? "#2563eb" : stat.color === "amber" ? "#d97706" : "#9333ea" }} />
                     </div>
                   </div>
                 </CardContent>
@@ -96,16 +112,12 @@ function Dashboard() {
         >
           <h2 className="text-xl font-semibold text-slate-900 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {quickActions.map((action, index) => (
-              <Link 
-                key={action.label} 
-                to={action.disabled ? "#" : action.href}
-                className={action.disabled ? "pointer-events-none" : ""}
-              >
-                <Card className={`group cursor-pointer transition-all duration-300 ${action.disabled ? "opacity-50" : "hover:shadow-lg hover:border-emerald-200"}`}>
+            {quickActions.map((action) => (
+              <Link key={action.label} to={action.href}>
+                <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-emerald-200">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div 
-                      className={`p-3 rounded-xl transition-colors duration-300`}
+                      className="p-3 rounded-xl transition-colors duration-300"
                       style={{ 
                         backgroundColor: action.color === "emerald" ? "#d1fae5" : action.color === "blue" ? "#dbeafe" : "#f3e8ff"
                       }}
@@ -117,13 +129,8 @@ function Dashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-slate-900">{action.label}</p>
-                      {action.disabled && (
-                        <p className="text-xs text-slate-400">Coming in Phase 2</p>
-                      )}
                     </div>
-                    {!action.disabled && (
-                      <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all duration-300" />
-                    )}
+                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all duration-300" />
                   </CardContent>
                 </Card>
               </Link>
@@ -131,31 +138,88 @@ function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Getting Started */}
+        {/* RFPs List */}
         <motion.div
+          id="rfps"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.4 }}
         >
-          <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 text-white">
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">Get Started with BidGrid</h3>
-                  <p className="text-emerald-100 max-w-xl">
-                    Start by adding your vendors to the address book. Then you'll be ready to create 
-                    AI-powered RFPs and compare proposals in our smart grid.
-                  </p>
-                </div>
-                <Link to="/vendors">
-                  <Button size="lg" className="bg-white text-emerald-600 hover:bg-slate-100 shadow-lg whitespace-nowrap">
-                    Add Your First Vendor
-                    <ArrowRight className="w-4 h-4 ml-2" />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-slate-900">Your RFPs</h2>
+            <Link to="/rfps/create">
+              <Button size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                New RFP
+              </Button>
+            </Link>
+          </div>
+
+          {rfps.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-600 mb-2">No RFPs yet</h3>
+                <p className="text-slate-400 mb-4">Create your first RFP to get started</p>
+                <Link to="/rfps/create">
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create RFP
                   </Button>
                 </Link>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {rfps.map((rfp) => (
+                <Card key={rfp._id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-semibold text-slate-800">
+                            {rfp.title || "Untitled RFP"}
+                          </h3>
+                          {getStatusBadge(rfp.status)}
+                        </div>
+                        <p className="text-sm text-slate-500 line-clamp-1">
+                          {rfp.description || "No description"}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Created {new Date(rfp.createdAt).toLocaleDateString()}
+                          {rfp.sentAt && ` • Sent ${new Date(rfp.sentAt).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {rfp.status === "sent" && (
+                          <Link to={`/rfps/${rfp._id}`}>
+                            <Button size="sm" variant="outline">
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Proposals
+                            </Button>
+                          </Link>
+                        )}
+                        {(rfp.status === "drafting" || rfp.status === "draft") && (
+                          <Link to="/rfps/create">
+                            <Button size="sm" variant="outline">
+                              Continue
+                            </Button>
+                          </Link>
+                        )}
+                        {rfp.status === "closed" && (
+                          <Link to={`/rfps/${rfp._id}`}>
+                            <Button size="sm" variant="ghost">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

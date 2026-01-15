@@ -9,6 +9,8 @@ import healthcheackRouter from "./routes/healthcheack.routes.js";
 import userRouter from "./routes/user.routes.js";
 import vendorRouter from "./routes/vendor.routes.js";
 import rfpRouter from "./routes/rfp.routes.js";
+import proposalRouter from "./routes/proposal.routes.js";
+import ingestionRouter from "./routes/ingestion.routes.js";
 
 const app = express();
 const morganFormat = ":method :url :status :response-time ms";
@@ -60,6 +62,8 @@ app.use("/api/v1/healthcheack", healthcheackRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/vendors", vendorRouter);
 app.use("/api/v1/rfps", rfpRouter);
+app.use("/api/v1/proposals", proposalRouter);
+app.use("/api/v1/ingestion", ingestionRouter);
 
 // ============== ERROR HANDLER ==============
 app.use((err, req, res, next) => {

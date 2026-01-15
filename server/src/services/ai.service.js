@@ -103,6 +103,68 @@ class AIService {
     }
     return null;
   }
+
+  // Parse vendor email response to extract proposal details
+  async parseVendorResponse(emailContent, rfpDetails) {
+    this.initialize();
+
+    const parserPrompt = `You are an expert at extracting proposal information from vendor emails.
+
+The vendor is responding to this RFP:
+Title: ${rfpDetails.title}
+Description: ${rfpDetails.description}
+Requirements: ${JSON.stringify(rfpDetails.requirements || [])}
+Budget: ${JSON.stringify(rfpDetails.budget || {})}
+Quantity: ${rfpDetails.quantity || "Not specified"}
+
+The vendor's email/document content is below. Extract ALL relevant proposal information.
+Handle messy formats: free-form text, tables, bullet points, etc.
+
+VENDOR EMAIL/DOCUMENT:
+${emailContent}
+
+---
+
+Extract and return a JSON object with these fields:
+{
+  "vendorName": "Company name from signature or email",
+  "price": {
+    "amount": 5000,
+    "currency": "USD",
+    "breakdown": "Any price breakdown mentioned"
+  },
+  "timeline": "Delivery timeframe mentioned",
+  "deliveryDate": "Specific date if mentioned (YYYY-MM-DD)",
+  "terms": ["Array of payment/delivery terms"],
+  "conditions": ["Array of conditions or caveats"],
+  "warranty": "Warranty info if mentioned",
+  "keyPoints": ["Main selling points or highlights"],
+  "quotedPrices": ["All price mentions found: '$5,000 per unit', 'Total: $25k'"],
+  "completeness": 85,
+  "missingInfo": ["What was not addressed from the RFP requirements"],
+  "summary": "2-3 sentence summary of this proposal"
+}
+
+Return ONLY valid JSON, no other text.`;
+
+    try {
+      const response = await this.model.invoke(parserPrompt);
+      const content = response.content;
+      
+      // Extract JSON from response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      
+      console.error("No JSON found in vendor response parsing");
+      return null;
+    } catch (err) {
+      console.error("Error parsing vendor response:", err.message);
+      return null;
+    }
+  }
 }
 
 export const aiService = new AIService();
+

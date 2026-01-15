@@ -21,11 +21,15 @@ class EmailService {
     const resend = this.initialize();
 
     const html = generateRFPEmailTemplate(rfp, rfp.createdBy?.username || "A BidGrid User");
+    
+    // Get reply-to address from IMAP_USER (where vendor replies will be read)
+    const replyTo = process.env.IMAP_USER || senderEmail;
 
     try {
       const { data, error } = await resend.emails.send({
         from: `BidGrid RFP <${senderEmail}>`,
         to: vendor.email,
+        replyTo: replyTo, // Vendors will reply to your Gmail
         subject: `RFP: ${rfp.title || "New Request for Proposal"}`,
         html: html,
       });
@@ -35,7 +39,7 @@ class EmailService {
         return { success: false, error: error.message, vendorId: vendor._id };
       }
 
-      console.log(`Email sent to ${vendor.email}, ID: ${data.id}`);
+      console.log(`Email sent to ${vendor.email}, ID: ${data.id}, Reply-To: ${replyTo}`);
       return { success: true, emailId: data.id, vendorId: vendor._id };
     } catch (err) {
       console.error(`Error sending email to ${vendor.email}:`, err);
@@ -60,3 +64,4 @@ class EmailService {
 }
 
 export const emailService = new EmailService();
+
