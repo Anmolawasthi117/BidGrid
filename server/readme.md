@@ -1,146 +1,151 @@
+# BidGrid Server
 
+Backend API for the BidGrid RFP management platform.
 
-## 🧠 **Structure Overview**
+## 🛠️ Tech Stack
 
-```
-backend/
-├── .gitignore
-├── .prettierrc (+ ignore)
-├── package.json
-├── src/
-│   ├── index.js              # Entry point
-│   ├── app.js                # App configuration
-│   ├── constant.js
-│   ├── db/                   # MongoDB connection
-│   ├── controllers/          # Route logic
-│   ├── routes/               # Express routers
-│   ├── middleware/           # Custom middleware (auth etc.)
-│   ├── models/               # Mongoose models
-│   ├── utils/                # Helpers: error, response, logger
-│   └── .env.sample           # Env config sample
-└── app.log                   # Sample log file (usually ignored)
-```
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Database**: MongoDB with Mongoose ODM
+- **AI**: Google Gemini 2.5 Flash (LangChain)
+- **Email Sending**: Resend
+- **Email Reading**: IMAP (imap-simple)
+- **PDF Parsing**: pdf-parse
+- **Auth**: JWT with refresh tokens
+- **Validation**: Zod
 
-This is **clean**, **modular**, and follows industry-standard Express + MongoDB design.
-
----
-
-## 📄 Here's the `README.md` for This Backend Template
-
-```md
-# 🧠 Backend Starter Template (Express + MongoDB)
-
-A clean, scalable Node.js backend boilerplate built with **Express**, **MongoDB (Mongoose)**, and organized in a modular architecture. Perfect for APIs, microservices, or full-stack apps.
-
----
-
-## ⚙️ Features
-
-- ✅ Express + Mongoose setup
-- ✅ Modular folder structure
-- ✅ Basic user route and health check
-- ✅ Custom error + response handling
-- ✅ Auth middleware stubbed
-- ✅ Logger utility
-- ✅ Environment variable config
-
----
-
-## 🏗 Folder Structure
+## 📁 Structure
 
 ```
-
 src/
-├── app.js              # App-level config
-├── index.js            # Entry point
-├── constant.js         # Constants
-├── db/                 # MongoDB connection logic
-├── controllers/        # Route handlers
-├── routes/             # Express routers
-├── models/             # Mongoose schemas
-├── middleware/         # Middleware (auth etc.)
-├── utils/              # Helpers (error handler, response, logger)
-└── .env.sample         # Env vars sample
+├── controllers/          # Request handlers
+│   ├── user.controller.js
+│   ├── vendor.controller.js
+│   ├── rfp.controller.js
+│   ├── proposal.controller.js
+│   └── ingestion.controller.js
+├── models/               # Mongoose schemas
+│   ├── user.model.js
+│   ├── vendor.model.js
+│   ├── rfp.model.js
+│   └── proposal.model.js
+├── routes/               # API route definitions
+├── services/             # Business logic
+│   ├── ai.service.js     # Gemini AI integration
+│   ├── email.service.js  # Resend email sending
+│   ├── emailIngestion.service.js  # IMAP email reading
+│   ├── pdfParser.service.js       # PDF text extraction
+│   └── vendorRecommendation.service.js  # AI comparison
+├── middleware/           # Express middleware
+├── validators/           # Zod validation schemas
+├── templates/            # Email HTML templates
+├── utils/                # Helpers (ApiError, asyncHandler)
+├── app.js               # Express app setup
+└── index.js             # Server entry point
+```
 
-````
+## 🚀 Setup
 
----
-
-## 🚀 Getting Started
-
-### 1. Clone the Repo / Copy Template
-```bash
-cd backend
-````
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Setup Environment Variables
+### 2. Configure Environment
 
-Create a `.env` file based on `.env.sample`:
+Create `src/.env`:
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/your-db
-JWT_SECRET=your_secret_key
+CORS_ORIGIN=http://localhost:5173
+MONGODB_URI=mongodb+srv://...
+
+# AI Service
+GEMINI_API_KEY=your-gemini-api-key
+
+# Email Sending (Resend)
+RESEND_API_KEY=re_xxxxx
+
+# Email Ingestion (IMAP)
+IMAP_HOST=imap.gmail.com
+IMAP_PORT=993
+IMAP_USER=your-email@gmail.com
+IMAP_PASSWORD=your-app-password
+
+# JWT Auth
+ACCESS_TOKEN_SECRET=your-secret-key
+ACCESS_TOKEN_EXPIRY=10d
+REFRESH_TOKEN_SECRET=your-refresh-secret
+REFRESH_TOKEN_EXPIRY=1d
 ```
 
-### 4. Start the Server
+### 3. Run Server
 
 ```bash
+# Development (with nodemon)
+npm run dev
+
+# Production
 npm start
 ```
 
----
+## 🔌 API Endpoints
 
-## 🧪 API Endpoints
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/users/register` | Register new user |
+| POST | `/api/v1/users/login` | Login |
+| POST | `/api/v1/users/logout` | Logout |
+| GET | `/api/v1/users/me` | Get current user |
+| POST | `/api/v1/users/refresh` | Refresh access token |
 
-### Health Check
+### Vendors
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/vendors` | List all vendors |
+| POST | `/api/v1/vendors` | Create vendor |
+| PATCH | `/api/v1/vendors/:id` | Update vendor |
+| DELETE | `/api/v1/vendors/:id` | Delete vendor |
+
+### RFPs
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/rfps/chat` | AI chat for RFP creation |
+| GET | `/api/v1/rfps` | List all RFPs |
+| GET | `/api/v1/rfps/:id` | Get single RFP |
+| POST | `/api/v1/rfps/:id/send` | Send RFP to vendors |
+| GET | `/api/v1/rfps/:id/proposals` | Get proposals for RFP |
+
+### Email Ingestion
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/ingestion/:rfpId/ingest` | Ingest vendor emails |
+| GET | `/api/v1/ingestion/:rfpId/recommendation` | Get AI recommendation |
+
+## 🔐 Gmail IMAP Setup
+
+1. Enable 2-Factor Authentication on Gmail
+2. Go to: https://myaccount.google.com/apppasswords
+3. Generate App Password for "Mail"
+4. Use the 16-char password as `IMAP_PASSWORD`
+
+## 📧 Email Flow
 
 ```
-GET /api/v1/health
+1. Create RFP → AI generates content
+2. Send to Vendors → Resend dispatches emails (Reply-To: IMAP_USER)
+3. Vendors Reply → Emails arrive in IMAP_USER inbox
+4. Click "Check for Replies" → IMAP fetches unread emails
+5. AI Parses → Extracts price, terms, timeline from messy text
+6. Compare → View all proposals side-by-side
+7. Get Recommendation → AI suggests best vendor with reasoning
 ```
 
-### User Routes (basic)
-
-```
-GET /api/v1/users
-```
-
----
-
-## 📦 Scripts
+## 🧪 Testing
 
 ```bash
-npm run start        # Start server
-npm run dev          # (Optional) Add nodemon for dev
+# Run tests
+npm test
 ```
-
----
-
-## 🧰 Tech Stack
-
-* Node.js
-* Express.js
-* MongoDB + Mongoose
-* dotenv
-* Prettier
-* Custom API Error / Response Classes
-* Logger Utility
-
----
-
-## ✨ Author
-
-Generated by `create-my-stack` CLI
-Built with ❤️ by Anmol Awasthi
-
----
-
-```
-
-

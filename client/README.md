@@ -1,120 +1,124 @@
-```markdown
-# ⚛️ Frontend Boilerplate with Redux Toolkit, TailwindCSS & React Router
+# BidGrid Client
 
-A powerful, minimal, and beautiful frontend boilerplate built with:
+React frontend for the BidGrid RFP management platform.
 
-- [Vite](https://vitejs.dev/)
-- [React](https://react.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Redux Toolkit](https://redux-toolkit.js.org/)
-- [React Router](https://reactrouter.com/)
+## 🛠️ Tech Stack
 
-This setup is designed to save hours of configuration work and give you a solid base for full-scale React apps.
+- **Framework**: React 18 with Vite
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State**: Redux Toolkit
+- **Routing**: React Router v6
+- **Animations**: Framer Motion
+- **HTTP**: Axios
 
----
-
-## 📁 Folder Structure
+## 📁 Structure
 
 ```
-
 src/
-├── assets/               # Images, icons, etc.
-├── components/           # Reusable UI components (e.g. Navbar)
-├── features/             # UI features consuming Redux logic
-│   └── counter/
-│       └── Counter.jsx
-├── pages/                # Route-level pages
-│   ├── Home.jsx
-│   └── About.jsx
-├── store/                # Redux Toolkit setup
-│   ├── index.js          # Configures the store
-│   └── slices/           # All feature slices
-│       └── counterSlice.js
-├── App.jsx               # Routing and layout
-├── main.jsx              # Root render with Provider/Router
-└── index.css             # Tailwind directives
+├── components/           # Reusable UI components
+│   ├── ui/              # shadcn/ui base components
+│   ├── Navbar.jsx
+│   ├── ChatMessage.jsx
+│   ├── RFPPreview.jsx
+│   └── VendorList.jsx
+├── pages/                # Page components
+│   ├── LandingPage.jsx
+│   ├── LoginPage.jsx
+│   ├── RegisterPage.jsx
+│   ├── Dashboard.jsx
+│   ├── VendorsPage.jsx
+│   ├── CreateRFPPage.jsx
+│   ├── RFPDetailPage.jsx
+│   └── SubmitProposalPage.jsx
+├── store/                # Redux store
+│   ├── store.js
+│   └── slices/
+│       ├── authSlice.js
+│       ├── vendorSlice.js
+│       └── rfpSlice.js
+├── utils/
+│   └── axiosInstance.js  # Axios with interceptors
+├── App.jsx               # Routes & layout
+├── main.jsx             # Entry point
+└── index.css            # Tailwind imports
+```
 
-````
+## 🚀 Setup
 
----
-
-## 🚀 Quick Start
-
-### 1. Clone or Use CLI Template
-If you’re using the CLI tool, it auto-generates this for you. Otherwise:
-
-```bash
-git clone https://github.com/your-username/your-repo-name.git
-cd your-repo-name
-````
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Start Dev Server
+### 2. Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Visit `http://localhost:5173` to view your app.
+Visit `http://localhost:5173`
 
----
-
-## 🧠 Included Features
-
-| Feature          | Description                                               |
-| ---------------- | --------------------------------------------------------- |
-| ⚛️ React + Vite  | Fast dev + optimized builds                               |
-| 🎨 Tailwind CSS  | Utility-first modern CSS styling                          |
-| 🧭 React Router  | Client-side routing setup (Home & About pre-built)        |
-| 🧰 Redux Toolkit | Global state management using the official Redux approach |
-| 🔁 Counter Slice | A working example of state update and dispatch via Redux  |
-
----
-
-## 🧪 How Redux Works Here
-
-* All slices live inside `src/store/slices/`
-* Main store is configured in `src/store/index.js`
-* App is wrapped with `<Provider>` in `main.jsx`
-* Example component `Counter.jsx` consumes the store using `useSelector` and `useDispatch`
-
----
-
-## 🧼 Commands
+### 3. Build for Production
 
 ```bash
-npm run dev       # Start dev server
-npm run build     # Production build
-npm run preview   # Preview production build
+npm run build
 ```
 
----
+## 📱 Pages
 
-## 🛠️ Customize
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | LandingPage | Public landing with features |
+| `/login` | LoginPage | User login |
+| `/register` | RegisterPage | User registration |
+| `/dashboard` | Dashboard | Overview with RFP list |
+| `/vendors` | VendorsPage | Vendor management |
+| `/rfps/create` | CreateRFPPage | AI chat RFP builder |
+| `/rfps/:id` | RFPDetailPage | RFP details + proposals |
 
-### Want to add more slices?
+## ✨ Features
 
-1. Create a new slice in `store/slices/`
-2. Import it in `store/index.js`
-3. Use in your features
+### AI Chat RFP Builder
+- Natural language conversation with Gemini AI
+- Live RFP preview as you chat
+- Auto-extraction of requirements, budget, timeline
 
----
+### Vendor Management
+- Add/edit/delete vendor contacts
+- Select vendors when sending RFPs
+- Track which vendors received RFPs
 
-## 🧑‍💻 Author
+### Proposal Comparison
+- View all vendor proposals side-by-side
+- AI-extracted data: price, timeline, terms
+- Completeness scores
+- AI recommendation with reasoning
 
-Created by [Anmol](https://npmjs.com/package/create-my-stack) — your custom full-stack starter CLI tool.
+### Modern UI
+- Dark/light themes
+- Glassmorphism design
+- Smooth animations
+- Responsive layout
 
----
+## 🔧 Environment
 
-## 📃 License
+The client connects to the backend at `http://localhost:5000` by default.
 
-MIT — feel free to use and modify.
+To change, update `src/utils/axiosInstance.js`:
 
+```javascript
+const axiosInstance = axios.create({
+  baseURL: "http://your-api-url/api/v1",
+});
 ```
 
----
+## 📦 Key Dependencies
+
+- `react` - UI framework
+- `react-router-dom` - Routing
+- `@reduxjs/toolkit` - State management
+- `axios` - HTTP client
+- `framer-motion` - Animations
+- `lucide-react` - Icons
+- `tailwindcss` - Styling
