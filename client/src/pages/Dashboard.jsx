@@ -33,7 +33,7 @@ function Dashboard() {
 
   const quickActions = [
     { label: "Add Vendor", icon: Plus, href: "/vendors", color: "emerald" },
-    { label: "Create RFP", icon: FileText, href: "#", color: "blue", disabled: true },
+    { label: "Create RFP", icon: FileText, href: "/rfps/create", color: "blue" },
     { label: "View Comparisons", icon: BarChart3, href: "#", color: "purple", disabled: true },
   ];
 

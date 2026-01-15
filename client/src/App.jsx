@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import VendorsPage from "./pages/VendorsPage";
+import CreateRFPPage from "./pages/CreateRFPPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -36,9 +37,18 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/rfps/create"
+          element={
+            <ProtectedRoute>
+              <CreateRFPPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </div>
   );
 }
 
 export default App;
+
