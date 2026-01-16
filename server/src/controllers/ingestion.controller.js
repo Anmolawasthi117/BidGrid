@@ -76,12 +76,14 @@ const ingestEmails = asyncHandler(async (req, res) => {
         source: "email",
         originalEmail: email.text || email.html,
         emailSubject: email.subject,
-        attachmentTexts: pdfResults.map(p => p.text),
+        attachmentTexts: pdfResults.map(p => p.text).filter(Boolean),
         parsedData: parsedData || {},
-        price: parsedData?.price || {},
+        price: parsedData?.price || { amount: 0, currency: "USD" },
         timeline: parsedData?.timeline || "",
         terms: parsedData?.terms || [],
         completeness: parsedData?.completeness || 0,
+        aiScore: parsedData?.completeness || 0, // Use completeness as initial score
+        aiAnalysis: parsedData?.summary || "",
         status: "parsed",
       });
 

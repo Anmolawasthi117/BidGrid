@@ -56,10 +56,10 @@ class AIService {
       console.log("Initializing Gemini with API key:", apiKey.substring(0, 10) + "...");
 
       this.model = new ChatGoogleGenerativeAI({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",  // Use 1.5-flash for free tier
         apiKey: apiKey,
-        temperature: 0.7,
-        maxOutputTokens: 1024,
+        temperature: 0.3,
+        maxOutputTokens: 4096,
       });
     }
     return this.model;
@@ -108,63 +108,109 @@ class AIService {
   async parseVendorResponse(emailContent, rfpDetails) {
     this.initialize();
 
-    const parserPrompt = `You are an expert at extracting proposal information from vendor emails.
+    // Truncate very long emails to avoid token limits
+    const maxLength = 8000;
+    const truncatedContent = emailContent.length > maxLength 
+      ? emailContent.substring(0, maxLength) + "... [truncated]"
+      : emailContent;
 
-The vendor is responding to this RFP:
-Title: ${rfpDetails.title}
-Description: ${rfpDetails.description}
-Requirements: ${JSON.stringify(rfpDetails.requirements || [])}
-Budget: ${JSON.stringify(rfpDetails.budget || {})}
-Quantity: ${rfpDetails.quantity || "Not specified"}
+    console.log(`Parsing vendor response (${truncatedContent.length} chars)`);
 
-The vendor's email/document content is below. Extract ALL relevant proposal information.
-Handle messy formats: free-form text, tables, bullet points, etc.
+    const parserPrompt = `You are an expert at extracting proposal information from vendor emails and documents.
 
-VENDOR EMAIL/DOCUMENT:
-${emailContent}
+CONTEXT - The vendor is responding to this RFP:
+- Title: ${rfpDetails.title || "Not specified"}
+- Description: ${rfpDetails.description || "Not specified"}
+- Budget: ${JSON.stringify(rfpDetails.budget || {})}
+- Quantity: ${rfpDetails.quantity || "Not specified"}
 
----
+VENDOR'S EMAIL/DOCUMENT CONTENT:
+"""
+${truncatedContent}
+"""
 
-Extract and return a JSON object with these fields:
+TASK: Extract the proposal information from the vendor's response above.
+
+Your response must be ONLY a valid JSON object with this exact structure (use null for missing values):
 {
-  "vendorName": "Company name from signature or email",
+  "vendorName": "company name or sender name",
   "price": {
-    "amount": 5000,
+    "amount": 0,
     "currency": "USD",
-    "breakdown": "Any price breakdown mentioned"
+    "breakdown": "price details if any"
   },
-  "timeline": "Delivery timeframe mentioned",
-  "deliveryDate": "Specific date if mentioned (YYYY-MM-DD)",
-  "terms": ["Array of payment/delivery terms"],
-  "conditions": ["Array of conditions or caveats"],
-  "warranty": "Warranty info if mentioned",
-  "keyPoints": ["Main selling points or highlights"],
-  "quotedPrices": ["All price mentions found: '$5,000 per unit', 'Total: $25k'"],
-  "completeness": 85,
-  "missingInfo": ["What was not addressed from the RFP requirements"],
-  "summary": "2-3 sentence summary of this proposal"
+  "timeline": "delivery timeframe",
+  "deliveryDate": "YYYY-MM-DD or null",
+  "terms": ["payment term 1", "payment term 2"],
+  "conditions": ["condition 1", "condition 2"],
+  "warranty": "warranty info or null",
+  "keyPoints": ["highlight 1", "highlight 2"],
+  "quotedPrices": ["$X for Y", "Total: $Z"],
+  "completeness": 50,
+  "missingInfo": ["missing item 1"],
+  "summary": "Brief 1-2 sentence summary of this proposal"
 }
 
-Return ONLY valid JSON, no other text.`;
+IMPORTANT:
+- Return ONLY the JSON object, nothing else
+- Use 0 for price.amount if no price is mentioned
+- Use an empty array [] if no items found for array fields
+- Estimate completeness as a score from 0-100
+- Extract ANY price mentions you find`;
 
     try {
       const response = await this.model.invoke(parserPrompt);
-      const content = response.content;
+      let content = response.content;
       
-      // Extract JSON from response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      console.log("AI Response received, length:", content.length);
+      
+      // Strip markdown code blocks if present
+      content = content.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+      
+      // Try to extract JSON from response
+      let jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          console.log("Successfully parsed vendor response:", parsed.vendorName, "Price:", parsed.price?.amount);
+          return parsed;
+        } catch (parseErr) {
+          console.error("JSON parse error:", parseErr.message);
+          console.log("Raw content:", content.substring(0, 500));
+        }
       }
       
-      console.error("No JSON found in vendor response parsing");
-      return null;
+      console.error("No valid JSON found in AI response");
+      console.log("Response preview:", content.substring(0, 300));
+      
+      // Return default structure if parsing fails
+      return {
+        vendorName: "Unknown",
+        price: { amount: 0, currency: "USD", breakdown: "" },
+        timeline: "Not specified",
+        deliveryDate: null,
+        terms: [],
+        conditions: [],
+        warranty: null,
+        keyPoints: [],
+        quotedPrices: [],
+        completeness: 0,
+        missingInfo: ["Could not parse response"],
+        summary: "Failed to extract proposal details from email"
+      };
     } catch (err) {
       console.error("Error parsing vendor response:", err.message);
-      return null;
+      return {
+        vendorName: "Unknown",
+        price: { amount: 0, currency: "USD" },
+        timeline: "Not specified",
+        completeness: 0,
+        summary: "Error occurred during parsing"
+      };
     }
   }
 }
 
 export const aiService = new AIService();
+
 

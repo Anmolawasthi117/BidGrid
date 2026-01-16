@@ -11,88 +11,110 @@ class VendorRecommendationService {
       };
     }
 
-    // Build proposal summaries for AI
-    const proposalSummaries = proposals.map((p, index) => ({
-      index: index + 1,
-      vendorName: p.vendorName || p.vendorEmail,
-      vendorEmail: p.vendorEmail,
-      price: p.parsedData?.price || p.price,
-      timeline: p.parsedData?.timeline || p.timeline,
-      completeness: p.parsedData?.completeness || p.completeness || 0,
-      terms: p.parsedData?.terms || [],
-      conditions: p.parsedData?.conditions || [],
-      summary: p.parsedData?.summary || "",
-      keyPoints: p.parsedData?.keyPoints || [],
-    }));
+    // Build simple proposal summaries for AI
+    const proposalSummaries = proposals.map((p, index) => {
+      const price = p.parsedData?.price?.amount || p.price?.amount || 0;
+      return {
+        vendor: p.vendorName || p.vendorEmail,
+        email: p.vendorEmail,
+        price: price,
+        timeline: p.parsedData?.timeline || p.timeline || "Not specified",
+        completeness: p.parsedData?.completeness || p.completeness || 0,
+        summary: p.parsedData?.summary || "",
+      };
+    });
 
-    const prompt = `You are a procurement expert helping a buyer choose the best vendor.
+    console.log("Generating recommendation for proposals:", proposalSummaries);
 
-RFP DETAILS:
-Title: ${rfpDetails.title}
-Description: ${rfpDetails.description}
-Budget: ${JSON.stringify(rfpDetails.budget || {})}
-Quantity: ${rfpDetails.quantity || "Not specified"}
-Key Requirements: ${JSON.stringify(rfpDetails.requirements || [])}
+    const prompt = `You are a procurement expert. Compare these vendor proposals and recommend the best one.
 
-VENDOR PROPOSALS RECEIVED:
-${JSON.stringify(proposalSummaries, null, 2)}
+RFP: ${rfpDetails.title || "Purchase Request"}
+Budget: ${rfpDetails.budget?.max || "Flexible"}
 
----
+PROPOSALS:
+${proposalSummaries.map((p, i) => `
+${i+1}. ${p.vendor}
+   - Price: $${p.price || "Not specified"}
+   - Timeline: ${p.timeline}
+   - Completeness: ${p.completeness}%
+   - Summary: ${p.summary}
+`).join("\n")}
 
-Analyze all proposals and provide a comprehensive comparison and recommendation.
-
-Return a JSON object with this structure:
+Return ONLY this JSON (no other text):
 {
-  "comparison": {
-    "priceRange": { "min": 4500, "max": 7200, "average": 5500 },
-    "lowestPrice": { "vendor": "Vendor Name", "amount": 4500 },
-    "fastestDelivery": { "vendor": "Vendor Name", "timeline": "1 week" },
-    "mostComplete": { "vendor": "Vendor Name", "score": 95 },
-    "keyDifferences": ["Price varies by 60%", "Only 2 offer warranty"]
-  },
-  "scores": [
-    {
-      "vendorName": "Acme Corp",
-      "overallScore": 85,
-      "priceScore": 80,
-      "timelineScore": 90,
-      "completenessScore": 85,
-      "pros": ["Competitive price", "Fast delivery"],
-      "cons": ["No warranty mentioned"]
-    }
-  ],
-  "recommendation": {
-    "winner": "Acme Corp",
-    "winnerEmail": "acme@example.com",
-    "confidence": "high",
-    "reason": "Best combination of price, timeline, and completeness. Offers competitive pricing at $5,000 with 2-week delivery and addresses all key requirements.",
-    "secondChoice": "Beta Inc",
-    "secondChoiceReason": "Slightly more expensive but offers better warranty terms",
-    "risks": ["No penalty clause for late delivery"],
-    "negotiationTips": ["Could negotiate 5% discount for upfront payment"]
-  },
-  "summary": "Received 3 proposals ranging from $4,500 to $7,200. Acme Corp provides the best value with competitive pricing and fast delivery. Consider negotiating warranty terms before final decision."
-}
-
-Return ONLY valid JSON, no other text.`;
+  "winner": "vendor name",
+  "confidence": "high",
+  "reason": "explanation why this vendor is best",
+  "scores": [{"vendor": "name", "score": 85}],
+  "risks": ["risk 1"],
+  "summary": "brief overall summary"
+}`;
 
     try {
       aiService.initialize();
       const response = await aiService.model.invoke(prompt);
-      const content = response.content;
+      let content = response.content;
       
-      // Extract JSON
+      console.log("AI recommendation response length:", content.length);
+      
+      // Strip markdown code blocks if present
+      content = content.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+      
+      // Try to extract JSON
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          console.log("Recommendation parsed successfully:", parsed.winner);
+          
+          // Structure the response properly
+          return {
+            comparison: this.generateQuickComparison(proposals),
+            recommendation: {
+              winner: parsed.winner,
+              confidence: parsed.confidence || "medium",
+              reason: parsed.reason || "Based on overall evaluation",
+              risks: parsed.risks || [],
+            },
+            scores: parsed.scores || [],
+            summary: parsed.summary || "Analysis complete",
+          };
+        } catch (parseErr) {
+          console.error("JSON parse error:", parseErr.message);
+          console.log("Raw response:", content.substring(0, 500));
+        }
       }
       
-      console.error("No JSON found in recommendation");
-      return null;
+      // Fallback: generate basic recommendation from data
+      console.log("Using fallback recommendation logic");
+      return this.generateFallbackRecommendation(proposals);
     } catch (err) {
       console.error("Error generating recommendation:", err.message);
-      return null;
+      return this.generateFallbackRecommendation(proposals);
     }
+  }
+
+  // Fallback when AI fails
+  generateFallbackRecommendation(proposals) {
+    const quickComparison = this.generateQuickComparison(proposals);
+    const bestVendor = quickComparison?.highestCompletenessVendor?.vendor || 
+                       quickComparison?.lowestPriceVendor?.vendor ||
+                       proposals[0]?.vendorName;
+
+    return {
+      comparison: quickComparison,
+      recommendation: {
+        winner: bestVendor,
+        confidence: "medium",
+        reason: "Recommended based on completeness and pricing analysis",
+        risks: ["Full AI analysis unavailable - review manually"],
+      },
+      scores: proposals.map(p => ({
+        vendor: p.vendorName || p.vendorEmail,
+        score: p.parsedData?.completeness || p.completeness || 50,
+      })),
+      summary: `${proposals.length} proposals received. ${bestVendor} appears to offer the best value.`,
+    };
   }
 
   // Quick comparison without full AI analysis

@@ -86,6 +86,28 @@ const proposalSchema = new Schema(
 // Compound index for RFP + vendorEmail uniqueness
 proposalSchema.index({ rfp: 1, vendorEmail: 1 }, { unique: true });
 
+// Drop old incorrect index on startup
+proposalSchema.on('index', async function() {
+  try {
+    const Proposal = this;
+    const indexes = await Proposal.collection.indexes();
+    for (const idx of indexes) {
+      // Drop old rfp_1_vendor_1 index if it exists
+      if (idx.name === 'rfp_1_vendor_1') {
+        console.log('Dropping old index: rfp_1_vendor_1');
+        await Proposal.collection.dropIndex('rfp_1_vendor_1');
+        console.log('Old index dropped successfully');
+      }
+    }
+  } catch (err) {
+    // Index might not exist, that's fine
+    if (!err.message.includes('not found')) {
+      console.log('Index cleanup note:', err.message);
+    }
+  }
+});
+
 export const Proposal = mongoose.model("Proposal", proposalSchema);
+
 
 
